@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 def start_x_server():
-    """Start the X server."""
+    """Start the X server and capture its output."""
     try:
         # Ensure XDG_RUNTIME_DIR is set
         if "XDG_RUNTIME_DIR" not in os.environ:
@@ -11,7 +11,11 @@ def start_x_server():
             os.makedirs(os.environ["XDG_RUNTIME_DIR"], exist_ok=True)
 
         print("Starting X server...")
-        x_server_process = subprocess.Popen(["xinit", "--", ":1"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        x_server_process = subprocess.Popen(
+            ["xinit", "--", ":1"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
         return x_server_process
     except FileNotFoundError:
         print("Error: xinit not found. Please ensure X server is installed.")
@@ -26,10 +30,13 @@ def run_application(app_command):
         print(f"Application exited with error: {e}")
 
 def stop_x_server(x_server_process):
-    """Stop the X server."""
+    """Stop the X server and display its output."""
     print("Stopping X server...")
     x_server_process.terminate()
-    x_server_process.wait()
+    stdout, stderr = x_server_process.communicate()
+    print("X server output:")
+    print(stdout.decode())
+    print(stderr.decode())
 
 def main():
     if len(sys.argv) < 2:
