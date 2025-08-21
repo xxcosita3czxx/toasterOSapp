@@ -34,7 +34,7 @@ def run_application(app_command):
     """Run the SDL2 application in the X server environment."""
     try:
         print(f"Running application: {app_command}")
-        subprocess.run(app_command, check=True, env={"DISPLAY": ":1"})
+        subprocess.run(app_command, check=True, env={"DISPLAY": ":1", "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"]})
     except subprocess.CalledProcessError as e:
         print(f"Application exited with error: {e}")
 
