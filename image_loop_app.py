@@ -50,6 +50,7 @@ class ImageLoopApp:
 
         sprites = [factory.from_image(image_path) for image_path in self.images]
 
+        direction = 1  # 1 for forward, -1 for backward
         while self.running:
             self.renderer.clear(sdl2.ext.Color(30, 30, 30))
 
@@ -70,7 +71,13 @@ class ImageLoopApp:
             # Update the current image based on the interval
             now = time.time()
             if now - self.last_update_time >= self.interval:
-                self.current_image_index = (self.current_image_index + 1) % len(sprites)
+                self.current_image_index += direction
+
+                # Reverse direction at the ends and wait
+                if self.current_image_index == len(sprites) - 1 or self.current_image_index == 0:
+                    direction *= -1
+                    time.sleep(2)  # Wait for 2 seconds at each end
+
                 self.last_update_time = now
 
         sdl2.ext.quit()
