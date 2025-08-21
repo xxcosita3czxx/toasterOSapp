@@ -51,14 +51,16 @@ class ImageLoopApp:
         sprites = [factory.from_image(image_path) for image_path in self.images]
 
         direction = 1  # 1 for forward, -1 for backward
+        blink = False  # Blinking state
         while self.running:
             self.renderer.clear(sdl2.ext.Color(30, 30, 30))
 
             # Display the current image scaled to fullscreen
-            sprite = sprites[self.current_image_index]
-            window_size = self.window.size
-            dstrect = sdl2.SDL_Rect(0, 0, window_size[0], window_size[1])
-            self.renderer.copy(sprite, dstrect=dstrect)
+            if not blink:  # Skip rendering during blink
+                sprite = sprites[self.current_image_index]
+                window_size = self.window.size
+                dstrect = sdl2.SDL_Rect(0, 0, window_size[0], window_size[1])
+                self.renderer.copy(sprite, dstrect=dstrect)
 
             self.renderer.present()
 
@@ -71,12 +73,16 @@ class ImageLoopApp:
             # Update the current image based on the interval
             now = time.time()
             if now - self.last_update_time >= self.interval:
-                self.current_image_index += direction
+                if blink:
+                    blink = False  # End blinking
+                else:
+                    self.current_image_index += direction
 
-                # Reverse direction at the ends and wait
-                if self.current_image_index == len(sprites) - 1 or self.current_image_index == 0:
-                    direction *= -1
-                    time.sleep(2)  # Wait for 2 seconds at each end
+                    # Reverse direction at the ends and start blinking
+                    if self.current_image_index == len(sprites) - 1 or self.current_image_index == 0:
+                        direction *= -1
+                        blink = True  # Start blinking
+                        time.sleep(0.5)  # Short blink delay
 
                 self.last_update_time = now
 
