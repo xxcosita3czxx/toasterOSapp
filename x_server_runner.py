@@ -2,13 +2,22 @@ import os
 import subprocess
 import sys
 
+def setup_xdg_runtime_dir():
+    """Ensure XDG_RUNTIME_DIR is set up with correct permissions."""
+    if "XDG_RUNTIME_DIR" not in os.environ:
+        os.environ["XDG_RUNTIME_DIR"] = "/tmp/runtime-dir"
+    runtime_dir = os.environ["XDG_RUNTIME_DIR"]
+    try:
+        os.makedirs(runtime_dir, exist_ok=True)
+        os.chmod(runtime_dir, 0o700)
+    except Exception as e:
+        print(f"Failed to set up XDG_RUNTIME_DIR: {e}")
+        sys.exit(1)
+
 def start_x_server():
     """Start the X server and capture its output."""
     try:
-        # Ensure XDG_RUNTIME_DIR is set
-        if "XDG_RUNTIME_DIR" not in os.environ:
-            os.environ["XDG_RUNTIME_DIR"] = "/tmp/runtime-dir"
-            os.makedirs(os.environ["XDG_RUNTIME_DIR"], exist_ok=True)
+        setup_xdg_runtime_dir()
 
         print("Starting X server...")
         x_server_process = subprocess.Popen(
