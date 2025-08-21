@@ -1,0 +1,24 @@
+{
+    "anim": [
+        "start.mp4",
+        "between.mp4",
+        "logo.jpg",
+        {"sleep": 1},
+        "between.mp4",
+        "logo.jpg",
+        {"sleep": 1},
+        "between.mp4",
+        "logo.jpg",
+        {"sleep": 1},
+        "between.mp4",
+        "logo.jpg",
+        {"sleep": 1},
+        "between.mp4",
+        "logo.jpg",
+        {"sleep": 1},
+        "between.mp4",
+        "logo.jpg",
+        {"sleep": 1},
+        "stop.mp4"
+    ]
+}

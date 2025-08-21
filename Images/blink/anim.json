@@ -9,6 +9,6 @@
         "face_3",
         "face_2",
         "face_1",
-        {"sleep": 3}
+        {"sleep": 5}
     ]
 }
