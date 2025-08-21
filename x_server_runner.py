@@ -1,9 +1,15 @@
+import os
 import subprocess
 import sys
 
 def start_x_server():
     """Start the X server."""
     try:
+        # Ensure XDG_RUNTIME_DIR is set
+        if "XDG_RUNTIME_DIR" not in os.environ:
+            os.environ["XDG_RUNTIME_DIR"] = "/tmp/runtime-dir"
+            os.makedirs(os.environ["XDG_RUNTIME_DIR"], exist_ok=True)
+
         print("Starting X server...")
         x_server_process = subprocess.Popen(["xinit", "--", ":1"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return x_server_process
