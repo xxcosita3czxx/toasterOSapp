@@ -51,16 +51,14 @@ class ImageLoopApp:
         sprites = [factory.from_image(image_path) for image_path in self.images]
 
         direction = 1  # 1 for forward, -1 for backward
-        blink = False  # Blinking state
         while self.running:
             self.renderer.clear(sdl2.ext.Color(30, 30, 30))
 
             # Display the current image scaled to fullscreen
-            if not blink:  # Skip rendering during blink
-                sprite = sprites[self.current_image_index]
-                window_size = self.window.size
-                dstrect = sdl2.SDL_Rect(0, 0, window_size[0], window_size[1])
-                self.renderer.copy(sprite, dstrect=dstrect)
+            sprite = sprites[self.current_image_index]
+            window_size = self.window.size
+            dstrect = sdl2.SDL_Rect(0, 0, window_size[0], window_size[1])
+            self.renderer.copy(sprite, dstrect=dstrect)
 
             self.renderer.present()
 
@@ -73,22 +71,18 @@ class ImageLoopApp:
             # Update the current image based on the interval
             now = time.time()
             if now - self.last_update_time >= self.interval:
-                if blink:
-                    blink = False  # End blinking
-                else:
-                    self.current_image_index += direction
+                self.current_image_index += direction
 
-                    # Reverse direction at the ends and start blinking
-                    if self.current_image_index == len(sprites) - 1 or self.current_image_index == 0:
-                        direction *= -1
-                        blink = True  # Start blinking
-                        time.sleep(0.5)  # Short blink delay
+                # Reverse direction at the ends and wait
+                if self.current_image_index == len(sprites) - 1 or self.current_image_index == 0:
+                    direction *= -1
+                    time.sleep(2)  # Wait for 2 seconds at each end
 
                 self.last_update_time = now
 
         sdl2.ext.quit()
 
 if __name__ == "__main__":
-    app = ImageLoopApp("Images", interval=1)  # Replace "Images" with your folder containing images
+    app = ImageLoopApp("Images", interval=0.1)  # Replace "Images" with your folder containing images
     app.load_images()
     app.run()
