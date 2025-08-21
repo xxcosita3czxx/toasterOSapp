@@ -52,6 +52,8 @@ class ImageLoopApp:
 
         direction = 1  # 1 for forward, -1 for backward
         while self.running:
+            start_time = time.time()  # Track frame start time
+
             self.renderer.clear(sdl2.ext.Color(30, 30, 30))
 
             # Display the current image scaled to fullscreen
@@ -69,16 +71,20 @@ class ImageLoopApp:
                     self.running = False
 
             # Update the current image based on the interval
-            now = time.time()
-            if now - self.last_update_time >= self.interval:
+            if time.time() - self.last_update_time >= self.interval:
                 self.current_image_index += direction
 
                 # Reverse direction at the ends and wait
                 if self.current_image_index == len(sprites) - 1 or self.current_image_index == 0:
                     direction *= -1
-                    time.sleep(2)  # Wait for 2 seconds at each end
+                    self.last_update_time = time.time() + 2  # Add 2-second wait at ends
+                else:
+                    self.last_update_time = time.time()
 
-                self.last_update_time = now
+            # Ensure consistent frame rate
+            elapsed_time = time.time() - start_time
+            if elapsed_time < 1 / 60:  # Target 60 FPS
+                time.sleep(1 / 60 - elapsed_time)
 
         sdl2.ext.quit()
 
