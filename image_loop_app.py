@@ -40,7 +40,9 @@ class ImageLoopApp:
             return
 
         sdl2.ext.init()
-        self.window = sdl2.ext.Window("Image Loop App", size=(800, 600))
+        display_mode = sdl2.SDL_DisplayMode()
+        sdl2.SDL_GetCurrentDisplayMode(0, display_mode)
+        self.window = sdl2.ext.Window("Image Loop App", size=(display_mode.w, display_mode.h), flags=sdl2.SDL_WINDOW_FULLSCREEN)
         self.window.show()
 
         self.renderer = sdl2.ext.Renderer(self.window)
@@ -74,6 +76,6 @@ class ImageLoopApp:
         sdl2.ext.quit()
 
 if __name__ == "__main__":
-    app = ImageLoopApp("Images", interval=2)  # Replace "Images" with your folder containing images
+    app = ImageLoopApp("Images", interval=1)  # Replace "Images" with your folder containing images
     app.load_images()
     app.run()
