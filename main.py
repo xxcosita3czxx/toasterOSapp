@@ -7,10 +7,10 @@ if __name__ == "__main__":
     sdl2.ext.init()
     print("SDL2 initialized")
     
-    # Create simple window
-    window = sdl2.ext.Window("ToasterOS", size=(800, 600))
+    # Create fullscreen window
+    window = sdl2.ext.Window("ToasterOS", size=(800, 600), flags=sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP)
     window.show()
-    print("Window created and shown")
+    print("Windowed fullscreen created and shown")
     
     # Create animation manager
     animation_manager = AnimationManager("Anims", window)
