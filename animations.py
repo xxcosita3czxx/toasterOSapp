@@ -335,7 +335,6 @@ class AnimationManager:
             
             print(f"Playing video: {os.path.basename(video_path)} at {fps} FPS")
 
-            factory = sdl2.ext.SpriteFactory(sdl2.ext.TEXTURE, renderer=self.renderer)
             window_width, window_height = self.window.size
             
             frame_count = 0
@@ -382,27 +381,36 @@ class AnimationManager:
                     final_frame[y_offset:y_offset+new_height, x_offset:x_offset+new_width] = resized_frame
                     
                     # Convert numpy array to PIL Image for SDL2 compatibility
-                    pil_image = Image.fromarray(final_frame)
+                    pil_image = Image.fromarray(final_frame, 'RGB')
                     
-                    # Convert PIL image to bytes
-                    img_bytes = pil_image.tobytes()
+                    # Convert PIL image to bytes (ensure proper format)
+                    img_bytes = pil_image.tobytes('raw', 'RGB')
                     
-                    # Create SDL2 surface directly from bytes
+                    # Create SDL2 surface directly from bytes with proper byte format
                     surface = sdl2.SDL_CreateRGBSurfaceFrom(
                         img_bytes,
                         window_width, window_height, 24,
                         window_width * 3,
-                        0x000000FF, 0x0000FF00, 0x00FF0000, 0
+                        0x0000FF, 0x00FF00, 0xFF0000, 0  # RGB byte order
                     )
                     
                     if surface:
                         # Create texture from surface
-                        texture = factory.from_surface(surface)
+                        texture = sdl2.SDL_CreateTextureFromSurface(self.renderer.sdlrenderer, surface)
                         
-                        # Render the frame
-                        self.renderer.clear()
-                        self.renderer.copy(texture, dstrect=sdl2.SDL_Rect(0, 0, window_width, window_height))
-                        self.renderer.present()
+                        if texture:
+                            # Clear renderer and draw the frame
+                            self.renderer.clear(sdl2.ext.Color(0, 0, 0))
+                            
+                            # Copy texture to renderer
+                            dst_rect = sdl2.SDL_Rect(0, 0, window_width, window_height)
+                            sdl2.SDL_RenderCopy(self.renderer.sdlrenderer, texture, None, dst_rect)
+                            
+                            # Present the frame
+                            self.renderer.present()
+                            
+                            # Clean up texture
+                            sdl2.SDL_DestroyTexture(texture)
                         
                         # Clean up surface
                         sdl2.SDL_FreeSurface(surface)
@@ -410,7 +418,7 @@ class AnimationManager:
                     frame_count += 1
                     
                 except Exception as e:
-                    print(f"Error processing video frame: {e}")
+                    print(f"Error processing video frame {frame_count}: {e}")
                     continue
 
                 # Handle events
