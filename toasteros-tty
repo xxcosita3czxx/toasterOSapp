@@ -34,9 +34,13 @@ start_pre() {
 start() {
     ebegin "Starting ${name}"
     
-    # Run directly on TTY1 (no background)
+    # Run in background so boot can continue
     start-stop-daemon --start \
+        --background \
+        --make-pidfile \
+        --pidfile /var/run/toasteros.pid \
         --exec "${command}" \
+        --chdir "/root/toasterOSapp" \
         -- ${command_args}
     
     eend $?
@@ -45,12 +49,18 @@ start() {
 stop() {
     ebegin "Stopping ${name}"
     
-    # Kill any X servers on display :1
-    pkill -f "X.*:1" 2>/dev/null || true
+    # Use start-stop-daemon to stop the process
+    start-stop-daemon --stop \
+        --pidfile /var/run/toasteros.pid \
+        --retry 15
     
-    # Kill the python processes
+    # Clean up any remaining processes
+    pkill -f "X.*:1" 2>/dev/null || true
     pkill -f "startx-toasteros.py" 2>/dev/null || true
     pkill -f "ToasterOSapp.*main.py" 2>/dev/null || true
+    
+    # Remove PID file
+    rm -f /var/run/toasteros.pid
     
     eend $?
 }
