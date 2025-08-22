@@ -1,7 +1,6 @@
 import os
 import subprocess
 import sys
-import time
 
 def setup_xdg_runtime_dir():
     """Ensure XDG_RUNTIME_DIR is set up with correct permissions."""
@@ -21,9 +20,8 @@ def start_x_server():
         setup_xdg_runtime_dir()
 
         print("Starting X server...")
-        # Start X server without xterm and hide cursor
         x_server_process = subprocess.Popen(
-            ["xinit", "python", "main.py", "--", ":1", "-nocursor"],
+            ["xinit", "/bin/true", "--", ":1"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
@@ -36,25 +34,9 @@ def run_application(app_command):
     """Run the SDL2 application in the X server environment."""
     try:
         print(f"Running application: {app_command}")
-        
-        # Configure environment for xinit (no window manager)
-        app_env = {
-            "DISPLAY": ":1", 
-            "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"],
-        }
-        
-        print("Configured SDL2 environment for xinit")
-        result = subprocess.run(app_command, check=False, env=app_env, capture_output=True, text=True)
-        
-        if result.returncode != 0:
-            print(f"Application failed with exit code {result.returncode}")
-            print("STDOUT:", result.stdout)
-            print("STDERR:", result.stderr)
-        else:
-            print("Application completed successfully")
-            
-    except Exception as e:
-        print(f"Error running application: {e}")
+        subprocess.run(app_command, check=True, env={"DISPLAY": ":1", "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"]})
+    except subprocess.CalledProcessError as e:
+        print(f"Application exited with error: {e}")
 
 def stop_x_server(x_server_process):
     """Stop the X server and display its output."""
@@ -67,7 +49,7 @@ def stop_x_server(x_server_process):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python startx-toasteros.py <application_command>")
+        print("Usage: python x_server_runner.py <application_command>")
         sys.exit(1)
 
     app_command = sys.argv[1:]
@@ -76,10 +58,6 @@ def main():
     x_server_process = start_x_server()
 
     try:
-        # Wait for X server to be ready
-        print("Waiting for X server to initialize...")
-        time.sleep(2)
-        
         # Run the application
         run_application(app_command)
     finally:
