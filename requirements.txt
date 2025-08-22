@@ -6,9 +6,3 @@ PySDL2>=0.9.6
 
 # Image processing and manipulation
 Pillow>=8.0.0
-
-# Numerical computing (required for OpenCV)
-numpy>=1.19.0
-
-# Video processing with OpenCV
-opencv-python>=4.5.0

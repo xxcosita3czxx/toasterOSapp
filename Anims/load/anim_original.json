@@ -1,0 +1,20 @@
+{
+    "anim": [
+        "start.mp4",
+        "between.mp4",
+        {"sleep": 1},
+        "between.mp4",
+        {"sleep": 1},
+        "between.mp4",
+        {"sleep": 1},
+        "between.mp4",
+        {"sleep": 1},
+        "between.mp4",
+        {"sleep": 1},
+        "between.mp4",
+        {"sleep": 1},
+        "stop.mp4",
+        {"sleep": 1}
+    ],
+    "fill":"vertical"
+}

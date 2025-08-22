@@ -3,15 +3,7 @@ import sdl2
 import sdl2.ext
 import time
 import json
-import numpy as np
 from PIL import Image
-try:
-    import cv2
-    CV2_AVAILABLE = True
-except ImportError:
-    CV2_AVAILABLE = False
-    print("Warning: opencv-python not available. Video playback will be disabled.")
-    print("Install with: pip install opencv-python")
 
 class AnimationManager:
     def __init__(self, image_folder, window, interval=2):
@@ -228,13 +220,15 @@ class AnimationManager:
 
         factory = sdl2.ext.SpriteFactory(sdl2.ext.TEXTURE, renderer=self.renderer)  # Ensure factory is used correctly
 
-        # Prepare the animation
+        # Prepare the animation - create a mapping of frame paths to sprites
         animation_data = self.animations[animation_name]
-        sprites = [
-            factory.from_image(frame) if isinstance(frame, str) and frame.endswith((".png", ".jpg", ".jpeg")) else None
-            for frame in animation_data["sequence"]
-            if isinstance(frame, str) and frame.endswith((".png", ".jpg", ".jpeg"))
-        ]
+        sprite_cache = {}
+        
+        # Pre-load all image sprites
+        for item in animation_data["sequence"]:
+            if isinstance(item, str) and item.endswith((".png", ".jpg", ".jpeg")):
+                if item not in sprite_cache:
+                    sprite_cache[item] = factory.from_image(item)
 
         current_sequence_index = 0
         last_update_time = time.time()
@@ -247,18 +241,16 @@ class AnimationManager:
             # Handle the current sequence item
             current_item = animation_data["sequence"][current_sequence_index]
             if isinstance(current_item, str) and current_item.endswith((".png", ".jpg", ".jpeg")):
-                # Display the current frame
-                sprite = sprites[current_sequence_index]
+                # Display the current frame using the sprite cache
+                sprite = sprite_cache[current_item]
                 fill_mode = animation_data.get("fill", "full")
                 dstrect = self.get_image_rect(sprite, fill_mode)
                 self.renderer.copy(sprite, dstrect=dstrect)
                 self.renderer.present()
             elif isinstance(current_item, str) and current_item.endswith(".mp4"):
-                # Handle MP4 files stored as strings
-                if os.path.exists(current_item):
-                    self.play_video(current_item)
-                else:
-                    print(f"Video file '{current_item}' not found. Skipping.")
+                # Handle MP4 files stored as strings (legacy - should not happen with new frame system)
+                print(f"Warning: MP4 file found in sequence: {current_item}")
+                print("This should have been converted to frames. Skipping.")
                 # Move to next sequence item
                 current_sequence_index += 1
                 if current_sequence_index >= len(animation_data["sequence"]):
@@ -305,182 +297,12 @@ class AnimationManager:
                 time.sleep(target_frame_duration - frame_duration)
 
     def play_video(self, video_path):
-        """Play an MP4 video in the SDL2 window using OpenCV.
+        """Legacy video playback function - no longer used.
+        Videos have been converted to frame sequences.
 
         Args:
-            video_path (str): Path to the MP4 video file.
+            video_path (str): Path to the MP4 video file (ignored).
         """
-        if not os.path.exists(video_path):
-            print(f"Video file '{video_path}' does not exist.")
-            return
-
-        if not CV2_AVAILABLE:
-            print("opencv-python not available. Install with: pip install opencv-python")
-            print("Skipping video playback.")
-            return
-
-        try:
-            print(f"Attempting to open video: {video_path}")
-            
-            # Open video using OpenCV
-            cap = cv2.VideoCapture(video_path)
-            
-            if not cap.isOpened():
-                print(f"Error: Could not open video file '{video_path}'")
-                print("This might be due to:")
-                print("- Unsupported codec")
-                print("- Corrupted video file")
-                print("- Missing codec libraries")
-                return
-
-            # Get video metadata
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            frame_count_total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            
-            if fps <= 0:
-                fps = 30  # Default to 30 FPS if not available
-            frame_delay = 1.0 / fps
-            
-            print("Video info:")
-            print(f"  - Resolution: {width}x{height}")
-            print(f"  - FPS: {fps}")
-            print(f"  - Total frames: {frame_count_total}")
-            print(f"  - Duration: {frame_count_total/fps:.2f} seconds")
-
-            window_width, window_height = self.window.size
-            print(f"  - Window size: {window_width}x{window_height}")
-            
-            frame_count = 0
-            start_time = time.time()
-
-            # Process each frame
-            while True:
-                if not self.running:
-                    print("Animation stopped by user")
-                    break
-
-                frame_start_time = time.time()
-
-                ret, frame = cap.read()
-                if not ret:
-                    print(f"End of video reached at frame {frame_count}")
-                    break  # End of video
-
-                try:
-                    # Debug: Check if we got a valid frame
-                    if frame is None:
-                        print(f"Frame {frame_count}: Got None frame, skipping")
-                        continue
-                    
-                    # Convert BGR to RGB (OpenCV uses BGR by default)
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    
-                    # Get original frame dimensions
-                    img_height, img_width = frame_rgb.shape[:2]
-                    
-                    # Debug: Print frame info for first few frames
-                    if frame_count < 3:
-                        print(f"Frame {frame_count}: size={img_width}x{img_height}, dtype={frame_rgb.dtype}")
-                    
-                    # Calculate scaling factors to fit window while maintaining aspect ratio
-                    scale_x = window_width / img_width
-                    scale_y = window_height / img_height
-                    scale = min(scale_x, scale_y)  # Use min to fit the entire video
-                    
-                    # Calculate new dimensions
-                    new_width = int(img_width * scale)
-                    new_height = int(img_height * scale)
-
-                    # Resize frame using OpenCV
-                    resized_frame = cv2.resize(frame_rgb, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
-                    
-                    # Create a black background image with window size
-                    final_frame = np.zeros((window_height, window_width, 3), dtype=np.uint8)
-                    
-                    # Calculate offset to center the resized frame
-                    x_offset = (window_width - new_width) // 2
-                    y_offset = (window_height - new_height) // 2
-                    
-                    # Place the resized frame in the center
-                    final_frame[y_offset:y_offset+new_height, x_offset:x_offset+new_width] = resized_frame
-                    
-                    # Convert numpy array to PIL Image for SDL2 compatibility
-                    pil_image = Image.fromarray(final_frame, 'RGB')
-                    
-                    # Convert PIL image to bytes (ensure proper format)
-                    img_bytes = pil_image.tobytes('raw', 'RGB')
-                    
-                    # Create SDL2 surface directly from bytes with proper byte format
-                    surface = sdl2.SDL_CreateRGBSurfaceFrom(
-                        img_bytes,
-                        window_width, window_height, 24,
-                        window_width * 3,
-                        0x0000FF, 0x00FF00, 0xFF0000, 0  # RGB byte order
-                    )
-                    
-                    if surface:
-                        # Create texture from surface
-                        texture = sdl2.SDL_CreateTextureFromSurface(self.renderer.sdlrenderer, surface)
-                        
-                        if texture:
-                            # Clear renderer and draw the frame
-                            self.renderer.clear(sdl2.ext.Color(0, 0, 0))
-                            
-                            # Copy texture to renderer
-                            dst_rect = sdl2.SDL_Rect(0, 0, window_width, window_height)
-                            result = sdl2.SDL_RenderCopy(self.renderer.sdlrenderer, texture, None, dst_rect)
-                            
-                            if result != 0:
-                                print(f"SDL_RenderCopy failed: {sdl2.SDL_GetError()}")
-                            
-                            # Present the frame
-                            self.renderer.present()
-                            
-                            # Clean up texture
-                            sdl2.SDL_DestroyTexture(texture)
-                        else:
-                            print(f"Failed to create texture: {sdl2.SDL_GetError()}")
-                        
-                        # Clean up surface
-                        sdl2.SDL_FreeSurface(surface)
-                    else:
-                        print(f"Failed to create surface: {sdl2.SDL_GetError()}")
-                    
-                    frame_count += 1
-                    
-                    # Debug: Print progress every 30 frames
-                    if frame_count % 30 == 0:
-                        print(f"Processed {frame_count}/{frame_count_total} frames...")
-                    
-                except Exception as e:
-                    print(f"Error processing video frame {frame_count}: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    continue
-
-                # Handle events
-                events = sdl2.ext.get_events()
-                for event in events:
-                    if event.type == sdl2.SDL_QUIT:
-                        self.running = False
-
-                # Maintain proper video frame rate
-                frame_end_time = time.time()
-                elapsed_time = frame_end_time - frame_start_time
-                if elapsed_time < frame_delay:
-                    time.sleep(frame_delay - elapsed_time)
-
-            cap.release()
-            
-            # Print performance statistics
-            total_time = time.time() - start_time
-            actual_fps = frame_count / total_time if total_time > 0 else 0
-            print(f"Video completed: {frame_count} frames in {total_time:.2f}s (avg FPS: {actual_fps:.1f})")
-
-        except Exception as e:
-            print(f"Error playing video '{video_path}': {e}")
-            import traceback
-            traceback.print_exc()
-            print("Make sure opencv-python is installed: pip install opencv-python")
+        print(f"Video playback requested for: {video_path}")
+        print("Videos have been converted to frame sequences - this function is no longer used.")
+        print("Update your animation configuration to use frame sequences instead.")
