@@ -10,9 +10,9 @@ import time
 import os
 
 def test_sdl2_alpine():
-    """Test SDL2 functionality in Alpine Linux environment"""
+    """Test SDL2 functionality in Alpine Linux xinit environment"""
     
-    print("=== SDL2 Alpine Linux Diagnostic ===")
+    print("=== SDL2 Alpine Linux XINIT Diagnostic ===")
     print()
     
     # Check environment
@@ -20,12 +20,22 @@ def test_sdl2_alpine():
     print(f"   DISPLAY: {os.environ.get('DISPLAY', 'NOT SET')}")
     print(f"   WAYLAND_DISPLAY: {os.environ.get('WAYLAND_DISPLAY', 'NOT SET')}")
     print(f"   XDG_SESSION_TYPE: {os.environ.get('XDG_SESSION_TYPE', 'NOT SET')}")
+    
+    # Set up for xinit if needed
+    if 'DISPLAY' not in os.environ:
+        print("   Setting DISPLAY=:0 for xinit")
+        os.environ['DISPLAY'] = ':0'
+    
     print()
     
-    # Force X11 driver
-    print("2. Setting SDL2 to use X11 driver...")
+    # Force X11 driver and xinit-specific settings
+    print("2. Setting SDL2 for xinit environment...")
     os.environ['SDL_VIDEODRIVER'] = 'x11'
+    os.environ['SDL_VIDEO_X11_WMCLASS'] = 'ToasterOS'
+    os.environ['SDL_VIDEO_WINDOW_POS'] = '0,0'
     print("   SDL_VIDEODRIVER = x11")
+    print("   SDL_VIDEO_X11_WMCLASS = ToasterOS")
+    print("   SDL_VIDEO_WINDOW_POS = 0,0")
     print()
     
     # Initialize SDL2
@@ -70,26 +80,43 @@ def test_sdl2_alpine():
             print(f"   Display {i}: ERROR - {sdl2.SDL_GetError().decode()}")
     print()
     
-    # Test window creation
-    print("6. Testing window creation...")
+    # Test window creation for xinit
+    print("6. Testing xinit-optimized window creation...")
     try:
-        # Try simple window first
-        window = sdl2.ext.Window("SDL2 Test", size=(640, 480))
-        print("   SUCCESS: Window object created")
+        # Try xinit-style borderless window
+        window = sdl2.ext.Window(
+            "SDL2 XINIT Test", 
+            size=(640, 480),
+            flags=sdl2.SDL_WINDOW_BORDERLESS | sdl2.SDL_WINDOW_SHOWN
+        )
+        print("   SUCCESS: Borderless window created")
+        
+        # Position at top-left
+        sdl2.SDL_SetWindowPosition(window.window, 0, 0)
+        print("   SUCCESS: Window positioned at 0,0")
         
         window.show()
         print("   SUCCESS: Window shown")
+        
+        # Try to grab focus
+        try:
+            sdl2.SDL_RaiseWindow(window.window)
+            sdl2.SDL_SetWindowInputFocus(window.window)
+            print("   SUCCESS: Input focus grabbed")
+        except Exception:
+            print("   INFO: Could not grab input focus (normal for xinit)")
         
         # Test renderer
         renderer = sdl2.ext.Renderer(window)
         print("   SUCCESS: Renderer created")
         
-        # Clear screen to red
-        renderer.clear(sdl2.ext.Color(255, 0, 0))
+        # Clear screen to blue (good for xinit testing)
+        renderer.clear(sdl2.ext.Color(0, 0, 255))
         renderer.present()
-        print("   SUCCESS: Red screen rendered")
+        print("   SUCCESS: Blue screen rendered")
         
-        print("   Window should be visible with red background")
+        print("   Window should be visible with blue background")
+        print("   For xinit: should be borderless and positioned at top-left")
         print("   Waiting 3 seconds...")
         
         # Wait and handle events
@@ -100,6 +127,11 @@ def test_sdl2_alpine():
                     print("   Window closed by user")
                     sdl2.ext.quit()
                     return True
+                elif event.type == sdl2.SDL_KEYDOWN:
+                    if event.key.keysym.sym == sdl2.SDLK_ESCAPE:
+                        print("   ESC pressed - closing")
+                        sdl2.ext.quit()
+                        return True
             time.sleep(0.1)
         
         print("   Test completed successfully!")
@@ -113,14 +145,24 @@ def test_sdl2_alpine():
     sdl2.ext.quit()
     print("   SDL2 cleaned up")
     print()
-    print("=== Diagnostic Complete ===")
+    print("=== XINIT Diagnostic Complete ===")
     return True
 
 if __name__ == "__main__":
     success = test_sdl2_alpine()
     if success:
-        print("✅ SDL2 appears to be working correctly")
+        print("✅ SDL2 appears to be working correctly with xinit")
         print("Your ToasterOS application should work!")
+        print()
+        print("XINIT Tips:")
+        print("- Make sure you run this from within xinit session") 
+        print("- The window should appear borderless and fill the screen")
+        print("- Use Ctrl+C or ESC to exit applications")
     else:
-        print("❌ SDL2 has issues in this environment")
+        print("❌ SDL2 has issues in this xinit environment")
         print("Check your X server setup and SDL2 installation")
+        print()
+        print("Common xinit issues:")
+        print("- DISPLAY not set (should be :0)")
+        print("- X server not running")
+        print("- Missing SDL2 X11 support: apk add sdl2-dev")

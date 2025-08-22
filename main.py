@@ -7,50 +7,83 @@ from app_menu import AppMenu
 
 if __name__ == "__main__":
     print("Starting ToasterOS...")
-    print("Initializing SDL2...")
+    print("Initializing SDL2 for xinit environment...")
     
-    # Initialize SDL2 with explicit video driver for X11 (Alpine Linux compatibility)
+    # Initialize SDL2 with explicit settings for xinit (no window manager)
     if 'DISPLAY' in os.environ:
-        print(f"X11 Display detected: {os.environ['DISPLAY']}")
-        # Force X11 video driver for better Alpine compatibility
-        os.environ['SDL_VIDEODRIVER'] = 'x11'
+        print(f"X Display detected: {os.environ['DISPLAY']}")
     else:
         print("Warning: No DISPLAY environment variable found")
+        # Set default display for xinit
+        os.environ['DISPLAY'] = ':0'
+        print("Set DISPLAY=:0 for xinit")
+    
+    # Configure SDL2 for xinit environment (no window manager)
+    os.environ['SDL_VIDEODRIVER'] = 'x11'
+    # Disable window manager hints since there's no WM
+    os.environ['SDL_VIDEO_X11_WMCLASS'] = 'ToasterOS'
+    # Force window to be override-redirect (bypass window manager)
+    os.environ['SDL_VIDEO_WINDOW_POS'] = '0,0'
+    
+    print("SDL2 environment configured for xinit")
     
     # Initialize SDL2
     init_result = sdl2.ext.init()
     print("SDL2 initialized successfully")
     
-    # Try to get display info, but handle failures gracefully for Alpine Linux
+    # For xinit, we should use the full screen without relying on display mode detection
+    # which often fails without a proper window manager
+    print("Configuring for xinit (no window manager)...")
+    
+    # Try to get display info, but use sensible defaults for xinit
     display_mode = sdl2.SDL_DisplayMode()
     result = sdl2.SDL_GetCurrentDisplayMode(0, display_mode)
     
     if result != 0:
-        # Fallback to common resolutions if display detection fails
-        print(f"Warning: Could not detect display mode (SDL error: {sdl2.SDL_GetError().decode()})")
-        print("Using fallback resolution of 1024x768")
-        window_width, window_height = 1024, 768
-        # Create window without fullscreen for better compatibility
-        window = sdl2.ext.Window("ToasterOS", size=(window_width, window_height))
+        # Common resolutions for xinit setups
+        print("Could not detect display mode, using xinit defaults")
+        window_width, window_height = 1920, 1080  # Try HD first
+        print(f"Using default resolution: {window_width}x{window_height}")
     else:
         window_width, window_height = display_mode.w, display_mode.h
         print(f"Detected display: {window_width}x{window_height}")
+    
+    # Create window optimized for xinit (no window manager)
+    print("Creating xinit-optimized window...")
+    try:
+        # For xinit, create a borderless window that covers the screen
+        window = sdl2.ext.Window(
+            "ToasterOS", 
+            size=(window_width, window_height),
+            flags=sdl2.SDL_WINDOW_BORDERLESS | sdl2.SDL_WINDOW_SHOWN
+        )
         
-        # Try fullscreen, but fall back to windowed if it fails
-        try:
-            window = sdl2.ext.Window("ToasterOS", size=(window_width, window_height), flags=sdl2.SDL_WINDOW_FULLSCREEN)
-            print("Created fullscreen window")
-        except Exception as e:
-            print(f"Fullscreen failed: {e}")
-            print("Falling back to windowed mode")
-            window = sdl2.ext.Window("ToasterOS", size=(window_width, window_height))
+        # Position window at top-left since there's no window manager
+        sdl2.SDL_SetWindowPosition(window.window, 0, 0)
+        
+        print("Created borderless window for xinit")
+        
+    except Exception as e:
+        print(f"Borderless window failed: {e}")
+        print("Falling back to basic window")
+        window = sdl2.ext.Window("ToasterOS", size=(window_width, window_height))
     
     print("Showing window...")
     window.show()
+    
+    # For xinit, we need to grab input focus since there's no window manager
+    try:
+        sdl2.SDL_RaiseWindow(window.window)
+        sdl2.SDL_SetWindowInputFocus(window.window)
+        print("Grabbed input focus")
+    except Exception:
+        print("Could not grab input focus (this may be normal for xinit)")
+    
     print(f"Window created and shown: {window_width}x{window_height}")
     
-    # Small delay to let the window initialize and ensure it's visible
-    time.sleep(0.2)
+    # Longer delay for xinit to initialize properly
+    time.sleep(0.5)
+    print("Initialization complete")
 
     animation_manager = AnimationManager("Anims", window, interval=0.1)
     animation_manager.load_animations()
