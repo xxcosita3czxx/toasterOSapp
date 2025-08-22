@@ -3,7 +3,14 @@ import sdl2
 import sdl2.ext
 import time
 import json
-import cv2  # Add OpenCV for video handling
+from PIL import Image
+try:
+    import imageio
+    IMAGEIO_AVAILABLE = True
+except ImportError:
+    IMAGEIO_AVAILABLE = False
+    print("Warning: imageio not available. Video playback will be disabled.")
+    print("Install with: pip install imageio[ffmpeg]")
 
 class AnimationManager:
     def __init__(self, image_folder, window, interval=2):
@@ -108,7 +115,7 @@ class AnimationManager:
                     if os.path.exists(frame_path):
                         sequence.append(frame_path)
                     elif frame_path.endswith(".mp4") and os.path.exists(frame_path):
-                        sequence.append({"video": frame_path})
+                        sequence.append(frame_path)  # Add MP4 files directly as strings
                     else:
                         print(f"Frame '{item}' not found in '{folder_path}'. Skipping frame.")
 
@@ -297,7 +304,7 @@ class AnimationManager:
                 time.sleep(target_frame_duration - frame_duration)
 
     def play_video(self, video_path):
-        """Play an MP4 video in the SDL2 window.
+        """Play an MP4 video in the SDL2 window using imageio (pure Python solution).
 
         Args:
             video_path (str): Path to the MP4 video file.
@@ -306,79 +313,134 @@ class AnimationManager:
             print(f"Video file '{video_path}' does not exist.")
             return
 
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            print(f"Failed to open video file '{video_path}'.")
+        if not IMAGEIO_AVAILABLE:
+            print("imageio not available. Install with: pip install imageio[ffmpeg]")
+            print("Skipping video playback.")
             return
 
-        # Get video properties for proper frame rate
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        frame_delay = 1.0 / fps if fps > 0 else 1.0 / 30  # Default to 30 FPS if unable to get FPS
-
-        while cap.isOpened() and self.running:
-            frame_start_time = time.time()
+        try:
+            # Open video using imageio
+            reader = imageio.get_reader(video_path)
             
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            # Convert the frame to SDL2-compatible format
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Get video metadata
+            meta = reader.get_meta_data()
+            fps = meta.get('fps', 30)  # Default to 30 FPS if not available
+            frame_delay = 1.0 / fps
             
-            # Calculate aspect ratio preserving resize (fit to window, not crop)
-            frame_height, frame_width = frame.shape[:2]
+            print(f"Playing video: {os.path.basename(video_path)} at {fps} FPS")
+
+            factory = sdl2.ext.SpriteFactory(sdl2.ext.TEXTURE, renderer=self.renderer)
             window_width, window_height = self.window.size
             
-            # Calculate scaling factors
-            scale_x = window_width / frame_width
-            scale_y = window_height / frame_height
-            scale = min(scale_x, scale_y)  # Use min to fit the entire video
+            frame_count = 0
+            start_time = time.time()
             
-            # Calculate new dimensions
-            new_width = int(frame_width * scale)
-            new_height = int(frame_height * scale)
+            # Pre-calculate scaling to avoid doing it for every frame
+            first_frame = True
+            scale_x = scale_y = scale = 1.0
+            new_width = new_height = 0
+            x_offset = y_offset = 0
+
+            # Process each frame
+            for frame_data in reader:
+                if not self.running:
+                    break
+
+                frame_start_time = time.time()
+
+                try:
+                    # Convert numpy array to PIL Image
+                    pil_image = Image.fromarray(frame_data)
+                    
+                    # Convert to RGB if necessary
+                    if pil_image.mode != 'RGB':
+                        pil_image = pil_image.convert('RGB')
+                    
+                    # Calculate scaling only once for the first frame
+                    if first_frame:
+                        first_frame = False
+                        img_width, img_height = pil_image.size
+                        
+                        # Calculate scaling factors
+                        scale_x = window_width / img_width
+                        scale_y = window_height / img_height
+                        scale = min(scale_x, scale_y)  # Use min to fit the entire video
+                        
+                        # Calculate new dimensions
+                        new_width = int(img_width * scale)
+                        new_height = int(img_height * scale)
+                        x_offset = (window_width - new_width) // 2
+                        y_offset = (window_height - new_height) // 2
+                        
+                        print(f"Video size: {img_width}x{img_height} -> {new_width}x{new_height} (scale: {scale:.3f})")
+                    
+                    # Resize to fit window while maintaining aspect ratio
+                    img_width, img_height = pil_image.size
+                    
+                    # Calculate scaling factors
+                    scale_x = window_width / img_width
+                    scale_y = window_height / img_height
+                    scale = min(scale_x, scale_y)  # Use min to fit the entire video
+                    
+                    # Calculate new dimensions
+                    new_width = int(img_width * scale)
+                    new_height = int(img_height * scale)
+
+                    # Resize image using faster method
+                    pil_image = pil_image.resize((new_width, new_height), Image.Resampling.NEAREST)  # NEAREST is much faster than LANCZOS                    # Create a new image with window size and paste the resized image centered
+                    final_image = Image.new('RGB', (window_width, window_height), (0, 0, 0))
+                    x_offset = (window_width - new_width) // 2
+                    y_offset = (window_height - new_height) // 2
+                    final_image.paste(pil_image, (x_offset, y_offset))
+                    
+                    # Convert PIL image directly to SDL2 surface (no file I/O!)
+                    img_bytes = final_image.tobytes()
+                    
+                    # Create SDL2 surface directly from bytes
+                    surface = sdl2.SDL_CreateRGBSurfaceFrom(
+                        img_bytes,
+                        window_width, window_height, 24,
+                        window_width * 3,
+                        0x000000FF, 0x0000FF00, 0x00FF0000, 0
+                    )
+                    
+                    if surface:
+                        # Create texture from surface
+                        texture = factory.from_surface(surface)
+                        
+                        # Render the frame
+                        self.renderer.clear()
+                        self.renderer.copy(texture, dstrect=sdl2.SDL_Rect(0, 0, window_width, window_height))
+                        self.renderer.present()
+                        
+                        # Clean up surface
+                        sdl2.SDL_FreeSurface(surface)
+                    
+                    frame_count += 1
+                    
+                except Exception as e:
+                    print(f"Error processing video frame: {e}")
+                    continue
+
+                # Handle events
+                events = sdl2.ext.get_events()
+                for event in events:
+                    if event.type == sdl2.SDL_QUIT:
+                        self.running = False
+
+                # Maintain proper video frame rate
+                frame_end_time = time.time()
+                elapsed_time = frame_end_time - frame_start_time
+                if elapsed_time < frame_delay:
+                    time.sleep(frame_delay - elapsed_time)
+
+            reader.close()
             
-            # Resize frame
-            frame = cv2.resize(frame, (new_width, new_height))
-            
-            # Add padding to center the video if needed
-            if new_width != window_width or new_height != window_height:
-                top = (window_height - new_height) // 2
-                bottom = window_height - new_height - top
-                left = (window_width - new_width) // 2
-                right = window_width - new_width - left
-                frame = cv2.copyMakeBorder(frame, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[0, 0, 0])
+            # Print performance statistics
+            total_time = time.time() - start_time
+            actual_fps = frame_count / total_time if total_time > 0 else 0
+            print(f"Video completed: {frame_count} frames in {total_time:.2f}s (avg FPS: {actual_fps:.1f})")
 
-            # Create a surface from the frame data
-            frame_surface = sdl2.SDL_CreateRGBSurfaceFrom(
-                frame.ctypes.data,
-                self.window.size[0], self.window.size[1], 24,
-                self.window.size[0] * 3,
-                0x000000FF, 0x0000FF00, 0x00FF0000, 0
-            )
-            
-            # Create texture from surface using the renderer's factory
-            factory = sdl2.ext.SpriteFactory(sdl2.ext.TEXTURE, renderer=self.renderer)
-            texture = factory.from_surface(frame_surface)
-
-            # Render the frame
-            self.renderer.clear()
-            self.renderer.copy(texture)
-            self.renderer.present()
-            
-            # Clean up the surface
-            sdl2.SDL_FreeSurface(frame_surface)
-
-            # Handle events
-            events = sdl2.ext.get_events()
-            for event in events:
-                if event.type == sdl2.SDL_QUIT:
-                    self.running = False
-
-            # Maintain proper video frame rate
-            frame_end_time = time.time()
-            elapsed_time = frame_end_time - frame_start_time
-            if elapsed_time < frame_delay:
-                time.sleep(frame_delay - elapsed_time)
-
-        cap.release()
+        except Exception as e:
+            print(f"Error playing video '{video_path}': {e}")
+            print("Make sure imageio is installed: pip install imageio[ffmpeg]")

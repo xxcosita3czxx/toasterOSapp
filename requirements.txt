@@ -1,0 +1,14 @@
+# ToasterOS Python Dependencies
+# All packages can be installed with: pip install -r requirements.txt
+
+# Core graphics and window management
+PySDL2>=0.9.6
+
+# Image processing and manipulation
+Pillow>=8.0.0
+
+# Video processing (pure Python, no system dependencies required)
+imageio[ffmpeg]>=2.9.0
+
+# Optional: For better video codec support
+imageio-ffmpeg>=0.4.0

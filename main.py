@@ -106,7 +106,8 @@ if __name__ == "__main__":
                                 animation_paused = False  # Resume animation
                                 animation_restart = True  # Restart animation for responsiveness
                                 print("Menu closed via swipe - restarting animation")
-                                animation_thread.join(timeout=0)
+                                animation_thread.join(timeout=1.0)  # Wait for animation thread to finish
+                                animation_thread = None
                                 animation_thread = threading.Thread(target=animation_worker, daemon=True)
                                 animation_thread.start()  # Restart animation thread
 
