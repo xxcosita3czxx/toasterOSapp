@@ -21,7 +21,7 @@ def start_x_server():
 
         print("Starting X server...")
         x_server_process = subprocess.Popen(
-            ["xinit", "/bin/yes", "--", ":1"],
+            ["xinit", "/bin/sh", "--", ":1"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
