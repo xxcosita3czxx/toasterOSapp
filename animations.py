@@ -320,22 +320,37 @@ class AnimationManager:
             return
 
         try:
+            print(f"Attempting to open video: {video_path}")
+            
             # Open video using OpenCV
             cap = cv2.VideoCapture(video_path)
             
             if not cap.isOpened():
                 print(f"Error: Could not open video file '{video_path}'")
+                print("This might be due to:")
+                print("- Unsupported codec")
+                print("- Corrupted video file")
+                print("- Missing codec libraries")
                 return
 
             # Get video metadata
             fps = cap.get(cv2.CAP_PROP_FPS)
+            frame_count_total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            
             if fps <= 0:
                 fps = 30  # Default to 30 FPS if not available
             frame_delay = 1.0 / fps
             
-            print(f"Playing video: {os.path.basename(video_path)} at {fps} FPS")
+            print("Video info:")
+            print(f"  - Resolution: {width}x{height}")
+            print(f"  - FPS: {fps}")
+            print(f"  - Total frames: {frame_count_total}")
+            print(f"  - Duration: {frame_count_total/fps:.2f} seconds")
 
             window_width, window_height = self.window.size
+            print(f"  - Window size: {window_width}x{window_height}")
             
             frame_count = 0
             start_time = time.time()
@@ -343,20 +358,31 @@ class AnimationManager:
             # Process each frame
             while True:
                 if not self.running:
+                    print("Animation stopped by user")
                     break
 
                 frame_start_time = time.time()
 
                 ret, frame = cap.read()
                 if not ret:
+                    print(f"End of video reached at frame {frame_count}")
                     break  # End of video
 
                 try:
+                    # Debug: Check if we got a valid frame
+                    if frame is None:
+                        print(f"Frame {frame_count}: Got None frame, skipping")
+                        continue
+                    
                     # Convert BGR to RGB (OpenCV uses BGR by default)
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     
                     # Get original frame dimensions
                     img_height, img_width = frame_rgb.shape[:2]
+                    
+                    # Debug: Print frame info for first few frames
+                    if frame_count < 3:
+                        print(f"Frame {frame_count}: size={img_width}x{img_height}, dtype={frame_rgb.dtype}")
                     
                     # Calculate scaling factors to fit window while maintaining aspect ratio
                     scale_x = window_width / img_width
@@ -404,21 +430,34 @@ class AnimationManager:
                             
                             # Copy texture to renderer
                             dst_rect = sdl2.SDL_Rect(0, 0, window_width, window_height)
-                            sdl2.SDL_RenderCopy(self.renderer.sdlrenderer, texture, None, dst_rect)
+                            result = sdl2.SDL_RenderCopy(self.renderer.sdlrenderer, texture, None, dst_rect)
+                            
+                            if result != 0:
+                                print(f"SDL_RenderCopy failed: {sdl2.SDL_GetError()}")
                             
                             # Present the frame
                             self.renderer.present()
                             
                             # Clean up texture
                             sdl2.SDL_DestroyTexture(texture)
+                        else:
+                            print(f"Failed to create texture: {sdl2.SDL_GetError()}")
                         
                         # Clean up surface
                         sdl2.SDL_FreeSurface(surface)
+                    else:
+                        print(f"Failed to create surface: {sdl2.SDL_GetError()}")
                     
                     frame_count += 1
                     
+                    # Debug: Print progress every 30 frames
+                    if frame_count % 30 == 0:
+                        print(f"Processed {frame_count}/{frame_count_total} frames...")
+                    
                 except Exception as e:
                     print(f"Error processing video frame {frame_count}: {e}")
+                    import traceback
+                    traceback.print_exc()
                     continue
 
                 # Handle events
@@ -442,4 +481,6 @@ class AnimationManager:
 
         except Exception as e:
             print(f"Error playing video '{video_path}': {e}")
+            import traceback
+            traceback.print_exc()
             print("Make sure opencv-python is installed: pip install opencv-python")
