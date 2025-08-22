@@ -3,14 +3,15 @@ import sdl2
 import sdl2.ext
 import time
 import json
+import numpy as np
 from PIL import Image
 try:
-    import imageio
-    IMAGEIO_AVAILABLE = True
+    import cv2
+    CV2_AVAILABLE = True
 except ImportError:
-    IMAGEIO_AVAILABLE = False
-    print("Warning: imageio not available. Video playback will be disabled.")
-    print("Install with: pip install imageio[ffmpeg]")
+    CV2_AVAILABLE = False
+    print("Warning: opencv-python not available. Video playback will be disabled.")
+    print("Install with: pip install opencv-python")
 
 class AnimationManager:
     def __init__(self, image_folder, window, interval=2):
@@ -304,7 +305,7 @@ class AnimationManager:
                 time.sleep(target_frame_duration - frame_duration)
 
     def play_video(self, video_path):
-        """Play an MP4 video in the SDL2 window using imageio (pure Python solution).
+        """Play an MP4 video in the SDL2 window using OpenCV.
 
         Args:
             video_path (str): Path to the MP4 video file.
@@ -313,18 +314,23 @@ class AnimationManager:
             print(f"Video file '{video_path}' does not exist.")
             return
 
-        if not IMAGEIO_AVAILABLE:
-            print("imageio not available. Install with: pip install imageio[ffmpeg]")
+        if not CV2_AVAILABLE:
+            print("opencv-python not available. Install with: pip install opencv-python")
             print("Skipping video playback.")
             return
 
         try:
-            # Open video using imageio
-            reader = imageio.get_reader(video_path)
+            # Open video using OpenCV
+            cap = cv2.VideoCapture(video_path)
             
+            if not cap.isOpened():
+                print(f"Error: Could not open video file '{video_path}'")
+                return
+
             # Get video metadata
-            meta = reader.get_meta_data()
-            fps = meta.get('fps', 30)  # Default to 30 FPS if not available
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            if fps <= 0:
+                fps = 30  # Default to 30 FPS if not available
             frame_delay = 1.0 / fps
             
             print(f"Playing video: {os.path.basename(video_path)} at {fps} FPS")
@@ -334,50 +340,26 @@ class AnimationManager:
             
             frame_count = 0
             start_time = time.time()
-            
-            # Pre-calculate scaling to avoid doing it for every frame
-            first_frame = True
-            scale_x = scale_y = scale = 1.0
-            new_width = new_height = 0
-            x_offset = y_offset = 0
 
             # Process each frame
-            for frame_data in reader:
+            while True:
                 if not self.running:
                     break
 
                 frame_start_time = time.time()
 
+                ret, frame = cap.read()
+                if not ret:
+                    break  # End of video
+
                 try:
-                    # Convert numpy array to PIL Image
-                    pil_image = Image.fromarray(frame_data)
+                    # Convert BGR to RGB (OpenCV uses BGR by default)
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     
-                    # Convert to RGB if necessary
-                    if pil_image.mode != 'RGB':
-                        pil_image = pil_image.convert('RGB')
+                    # Get original frame dimensions
+                    img_height, img_width = frame_rgb.shape[:2]
                     
-                    # Calculate scaling only once for the first frame
-                    if first_frame:
-                        first_frame = False
-                        img_width, img_height = pil_image.size
-                        
-                        # Calculate scaling factors
-                        scale_x = window_width / img_width
-                        scale_y = window_height / img_height
-                        scale = min(scale_x, scale_y)  # Use min to fit the entire video
-                        
-                        # Calculate new dimensions
-                        new_width = int(img_width * scale)
-                        new_height = int(img_height * scale)
-                        x_offset = (window_width - new_width) // 2
-                        y_offset = (window_height - new_height) // 2
-                        
-                        print(f"Video size: {img_width}x{img_height} -> {new_width}x{new_height} (scale: {scale:.3f})")
-                    
-                    # Resize to fit window while maintaining aspect ratio
-                    img_width, img_height = pil_image.size
-                    
-                    # Calculate scaling factors
+                    # Calculate scaling factors to fit window while maintaining aspect ratio
                     scale_x = window_width / img_width
                     scale_y = window_height / img_height
                     scale = min(scale_x, scale_y)  # Use min to fit the entire video
@@ -386,15 +368,24 @@ class AnimationManager:
                     new_width = int(img_width * scale)
                     new_height = int(img_height * scale)
 
-                    # Resize image using faster method
-                    pil_image = pil_image.resize((new_width, new_height), Image.Resampling.NEAREST)  # NEAREST is much faster than LANCZOS                    # Create a new image with window size and paste the resized image centered
-                    final_image = Image.new('RGB', (window_width, window_height), (0, 0, 0))
+                    # Resize frame using OpenCV
+                    resized_frame = cv2.resize(frame_rgb, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+                    
+                    # Create a black background image with window size
+                    final_frame = np.zeros((window_height, window_width, 3), dtype=np.uint8)
+                    
+                    # Calculate offset to center the resized frame
                     x_offset = (window_width - new_width) // 2
                     y_offset = (window_height - new_height) // 2
-                    final_image.paste(pil_image, (x_offset, y_offset))
                     
-                    # Convert PIL image directly to SDL2 surface (no file I/O!)
-                    img_bytes = final_image.tobytes()
+                    # Place the resized frame in the center
+                    final_frame[y_offset:y_offset+new_height, x_offset:x_offset+new_width] = resized_frame
+                    
+                    # Convert numpy array to PIL Image for SDL2 compatibility
+                    pil_image = Image.fromarray(final_frame)
+                    
+                    # Convert PIL image to bytes
+                    img_bytes = pil_image.tobytes()
                     
                     # Create SDL2 surface directly from bytes
                     surface = sdl2.SDL_CreateRGBSurfaceFrom(
@@ -434,7 +425,7 @@ class AnimationManager:
                 if elapsed_time < frame_delay:
                     time.sleep(frame_delay - elapsed_time)
 
-            reader.close()
+            cap.release()
             
             # Print performance statistics
             total_time = time.time() - start_time
@@ -443,4 +434,4 @@ class AnimationManager:
 
         except Exception as e:
             print(f"Error playing video '{video_path}': {e}")
-            print("Make sure imageio is installed: pip install imageio[ffmpeg]")
+            print("Make sure opencv-python is installed: pip install opencv-python")

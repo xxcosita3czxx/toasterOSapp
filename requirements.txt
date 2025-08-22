@@ -7,8 +7,8 @@ PySDL2>=0.9.6
 # Image processing and manipulation
 Pillow>=8.0.0
 
-# Video processing (pure Python, no system dependencies required)
-imageio[ffmpeg]>=2.9.0
+# Numerical computing (required for OpenCV)
+numpy>=1.19.0
 
-# Optional: For better video codec support
-imageio-ffmpeg>=0.4.0
+# Video processing with OpenCV
+opencv-python>=4.5.0
