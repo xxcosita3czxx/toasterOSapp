@@ -156,10 +156,9 @@ class AnimationManager:
             for current_item in animation_data["sequence"]:
                 if not self.running:  # Only check for global stop
                     return
-                    
-                self.renderer.clear(sdl2.ext.Color(0, 0, 0))
                 
                 if isinstance(current_item, str) and current_item.endswith((".png", ".jpg", ".jpeg")):
+                    self.renderer.clear(sdl2.ext.Color(0, 0, 0))
                     sprite = sprite_cache[current_item]
                     fill_mode = animation_data.get("fill", "full")
                     dstrect = self.get_image_rect(sprite, fill_mode)
@@ -167,6 +166,7 @@ class AnimationManager:
                     self.renderer.present()
                     time.sleep(animation_data["interval"])
                 elif isinstance(current_item, dict) and "sleep" in current_item:
+                    # Keep last frame visible during sleep
                     time.sleep(current_item["sleep"])
             
             # If not looping, break after one complete sequence
