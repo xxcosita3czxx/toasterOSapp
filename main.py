@@ -19,7 +19,7 @@ if __name__ == "__main__":
     
     # Run animations
     print("Starting animations...")
-    animation_manager.run_animation("load", loop=False)
-    animation_manager.run_animation("bootUp", loop=False)
+    animation_manager.run_animation("load")
+    animation_manager.run_animation("bootUp")
     while True:
         animation_manager.run_animation("blink")
