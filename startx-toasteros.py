@@ -23,7 +23,7 @@ def start_x_server():
         print("Starting X server...")
         # Start X server without xterm and hide cursor
         x_server_process = subprocess.Popen(
-            ["xinit", "/bin/true", "--", ":1", "-nocursor"],
+            ["xinit", "python", "main.py", "--", ":1", "-nocursor"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
