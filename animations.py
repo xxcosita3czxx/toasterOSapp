@@ -21,6 +21,56 @@ class AnimationManager:
         self.running = True
         self.renderer = sdl2.ext.Renderer(self.window)
 
+    def get_image_rect(self, sprite, fill_mode):
+        """Calculate the destination rectangle for an image based on the fill mode.
+        
+        Args:
+            sprite: The sprite object containing the image
+            fill_mode (str): Fill mode - "full", "horizontal", "vertical", or "fit"
+            
+        Returns:
+            sdl2.SDL_Rect: The destination rectangle for rendering
+        """
+        window_width, window_height = self.window.size
+        sprite_width, sprite_height = sprite.size
+        
+        if fill_mode == "full":
+            # Stretch to fill entire window (may distort aspect ratio)
+            return sdl2.SDL_Rect(0, 0, window_width, window_height)
+        
+        elif fill_mode == "horizontal":
+            # Fill horizontally, maintain aspect ratio, center vertically
+            scale = window_width / sprite_width
+            new_width = window_width
+            new_height = int(sprite_height * scale)
+            y_offset = max(0, (window_height - new_height) // 2)
+            return sdl2.SDL_Rect(0, y_offset, new_width, min(new_height, window_height))
+        
+        elif fill_mode == "vertical":
+            # Fill vertically, maintain aspect ratio, center horizontally
+            scale = window_height / sprite_height
+            new_height = window_height
+            new_width = int(sprite_width * scale)
+            x_offset = max(0, (window_width - new_width) // 2)
+            return sdl2.SDL_Rect(x_offset, 0, min(new_width, window_width), new_height)
+        
+        elif fill_mode == "fit":
+            # Fit entire image in window, maintain aspect ratio, letterbox if needed
+            scale_x = window_width / sprite_width
+            scale_y = window_height / sprite_height
+            scale = min(scale_x, scale_y)
+            
+            new_width = int(sprite_width * scale)
+            new_height = int(sprite_height * scale)
+            x_offset = (window_width - new_width) // 2
+            y_offset = (window_height - new_height) // 2
+            
+            return sdl2.SDL_Rect(x_offset, y_offset, new_width, new_height)
+        
+        else:
+            # Default to full if unknown mode
+            return sdl2.SDL_Rect(0, 0, window_width, window_height)
+
     def load_animations(self):
         """Load animations from folders containing images and a JSON configuration file."""
         if not os.path.exists(self.image_folder):
@@ -69,7 +119,8 @@ class AnimationManager:
             self.animations[animation_folder] = {
                 "sequence": sequence,
                 "interval": animation_data.get("interval", 0.1),
-                "loop": animation_data.get("loop", True)
+                "loop": animation_data.get("loop", True),
+                "fill": animation_data.get("fill", "full")  # Default to "full" for backward compatibility
             }
 
     def run(self, selected_animations=None):
@@ -98,7 +149,7 @@ class AnimationManager:
             animation_sprites[animation_name] = [
                 sprite
                 for frame in animation_data["sequence"]
-                for sprite in [self.renderer.factory.from_image(frame)] if isinstance(frame, str)
+                for sprite in [self.renderer.factory.from_image(frame)] if isinstance(frame, str) and (frame.endswith(".png") or frame.endswith(".jpg") or frame.endswith(".jpeg"))
             ]
 
         current_animation_index = 0
@@ -128,10 +179,10 @@ class AnimationManager:
                     time.sleep(current_item["sleep"])
                 elif isinstance(current_item, str):
                     # Handle frame items
-                    if current_item.endswith(".png"):
+                    if current_item.endswith((".png", ".jpg", ".jpeg")):
                         sprite = sprites[current_sequence_index]
-                        window_size = self.window.size
-                        dstrect = sdl2.SDL_Rect(0, 0, window_size[0], window_size[1])
+                        fill_mode = animation_data.get("fill", "full")
+                        dstrect = self.get_image_rect(sprite, fill_mode)
                         self.renderer.copy(sprite, dstrect=dstrect)
                         self.renderer.present()
                     else:
@@ -172,9 +223,9 @@ class AnimationManager:
         # Prepare the animation
         animation_data = self.animations[animation_name]
         sprites = [
-            factory.from_image(frame) if isinstance(frame, str) and frame.endswith(".png") else None
+            factory.from_image(frame) if isinstance(frame, str) and frame.endswith((".png", ".jpg", ".jpeg")) else None
             for frame in animation_data["sequence"]
-            if isinstance(frame, str) and frame.endswith(".png")
+            if isinstance(frame, str) and frame.endswith((".png", ".jpg", ".jpeg"))
         ]
 
         current_sequence_index = 0
@@ -183,15 +234,15 @@ class AnimationManager:
 
         while self.running:
             frame_start_time = time.time()
-            self.renderer.clear(sdl2.ext.Color(30, 30, 30))
+            self.renderer.clear(sdl2.ext.Color(0, 0, 0))
 
             # Handle the current sequence item
             current_item = animation_data["sequence"][current_sequence_index]
-            if isinstance(current_item, str) and current_item.endswith(".png"):
+            if isinstance(current_item, str) and current_item.endswith((".png", ".jpg", ".jpeg")):
                 # Display the current frame
                 sprite = sprites[current_sequence_index]
-                window_size = self.window.size
-                dstrect = sdl2.SDL_Rect(0, 0, window_size[0], window_size[1])
+                fill_mode = animation_data.get("fill", "full")
+                dstrect = self.get_image_rect(sprite, fill_mode)
                 self.renderer.copy(sprite, dstrect=dstrect)
                 self.renderer.present()
             elif isinstance(current_item, str) and current_item.endswith(".mp4"):
