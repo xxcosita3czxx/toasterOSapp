@@ -1,0 +1,67 @@
+#!/sbin/openrc-run
+
+name="ToasterOS"
+description="ToasterOS replaces the TTY1 login prompt after startup"
+
+# This service runs on TTY1 during system startup, replacing the default TTY login.
+# To access a shell, use Ctrl+Alt+F2 (or F3, F4, etc.)
+# To return to ToasterOS, use Ctrl+Alt+F1
+
+# Command configuration
+command="/usr/bin/python3"
+command_args="/root/toasterOSapp/startx-toasteros.py python /root/toasterOSapp/main.py"
+
+respawn_delay=5
+
+# Dependencies - run after user services
+depend() {
+    need localmount bootmisc
+    # after users
+    keyword -prefix -lxc
+}
+
+start_pre() {
+    # Set up environment
+    export DISPLAY=:1
+    export XDG_RUNTIME_DIR="/tmp/runtime-toasteros"
+    
+    # Create runtime directory
+    checkpath --directory --mode 0755 "${XDG_RUNTIME_DIR}"
+
+    einfo "Starting ${name}..."
+}
+
+start() {
+    ebegin "Starting ${name}"
+    
+    # Run directly on TTY1 (no background)
+    start-stop-daemon --start \
+        --exec "${command}" \
+        --stdout "${tty}" \
+        --stderr "${tty}" \
+        -- ${command_args}
+    
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping ${name}"
+    
+    # Kill any X servers on display :1
+    pkill -f "X.*:1" 2>/dev/null || true
+    
+    # Kill the python processes
+    pkill -f "startx-toasteros.py" 2>/dev/null || true
+    pkill -f "ToasterOSapp.*main.py" 2>/dev/null || true
+    
+    # Clear TTY
+    /usr/bin/clear > ${tty}
+    
+    eend $?
+}
+
+restart() {
+    stop
+    sleep ${respawn_delay}
+    start
+}
