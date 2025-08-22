@@ -37,8 +37,6 @@ start() {
     # Run directly on TTY1 (no background)
     start-stop-daemon --start \
         --exec "${command}" \
-        --stdout "${tty}" \
-        --stderr "${tty}" \
         -- ${command_args}
     
     eend $?
@@ -53,9 +51,6 @@ stop() {
     # Kill the python processes
     pkill -f "startx-toasteros.py" 2>/dev/null || true
     pkill -f "ToasterOSapp.*main.py" 2>/dev/null || true
-    
-    # Clear TTY
-    /usr/bin/clear > ${tty}
     
     eend $?
 }
