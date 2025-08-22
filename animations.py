@@ -151,35 +151,27 @@ class AnimationManager:
                 if item not in sprite_cache:
                     sprite_cache[item] = factory.from_image(item)
 
-        current_sequence_index = 0
-        last_update_time = time.time()
-
-        while self.running:
-            self.renderer.clear(sdl2.ext.Color(0, 0, 0))
-
-            # Handle the current sequence item
-            current_item = animation_data["sequence"][current_sequence_index]
-            if isinstance(current_item, str) and current_item.endswith((".png", ".jpg", ".jpeg")):
-                sprite = sprite_cache[current_item]
-                fill_mode = animation_data.get("fill", "full")
-                dstrect = self.get_image_rect(sprite, fill_mode)
-                self.renderer.copy(sprite, dstrect=dstrect)
-                self.renderer.present()
-            elif isinstance(current_item, dict) and "sleep" in current_item:
-                time.sleep(current_item["sleep"])
-
-            # Update sequence index based on interval
-            now = time.time()
-            if now - last_update_time >= animation_data["interval"]:
-                current_sequence_index += 1
-                if current_sequence_index >= len(animation_data["sequence"]):
-                    if loop:
-                        current_sequence_index = 0
-                    else:
-                        break
-                last_update_time = now
-
-            time.sleep(0.016)  # ~60 FPS
+        # Run the animation sequence
+        while True:
+            for current_item in animation_data["sequence"]:
+                if not self.running:  # Only check for global stop
+                    return
+                    
+                self.renderer.clear(sdl2.ext.Color(0, 0, 0))
+                
+                if isinstance(current_item, str) and current_item.endswith((".png", ".jpg", ".jpeg")):
+                    sprite = sprite_cache[current_item]
+                    fill_mode = animation_data.get("fill", "full")
+                    dstrect = self.get_image_rect(sprite, fill_mode)
+                    self.renderer.copy(sprite, dstrect=dstrect)
+                    self.renderer.present()
+                    time.sleep(animation_data["interval"])
+                elif isinstance(current_item, dict) and "sleep" in current_item:
+                    time.sleep(current_item["sleep"])
+            
+            # If not looping, break after one complete sequence
+            if not loop:
+                break
 
     def play_video(self, video_path):
         """Legacy video playback function - no longer used."""
