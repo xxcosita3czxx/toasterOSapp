@@ -2,7 +2,8 @@ import sdl2.ext
 from animations import AnimationManager
 
 if __name__ == "__main__":
-    print("Starting simple ToasterOS...")    
+    print("Starting simple ToasterOS...")
+        
     # Initialize SDL2
     sdl2.ext.init()
     print("SDL2 initialized")

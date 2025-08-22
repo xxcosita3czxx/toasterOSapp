@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import time
 
 def setup_xdg_runtime_dir():
     """Ensure XDG_RUNTIME_DIR is set up with correct permissions."""
@@ -40,10 +41,6 @@ def run_application(app_command):
         app_env = {
             "DISPLAY": ":1", 
             "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"],
-            # SDL2 configuration for xinit environment
-            "SDL_VIDEODRIVER": "x11",
-            "SDL_VIDEO_X11_WMCLASS": "ToasterOS",
-            "SDL_VIDEO_WINDOW_POS": "0,0"
         }
         
         print("Configured SDL2 environment for xinit")
@@ -70,7 +67,7 @@ def stop_x_server(x_server_process):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python x_server_runner.py <application_command>")
+        print("Usage: python startx-toasteros.py <application_command>")
         sys.exit(1)
 
     app_command = sys.argv[1:]
@@ -79,6 +76,10 @@ def main():
     x_server_process = start_x_server()
 
     try:
+        # Wait for X server to be ready
+        print("Waiting for X server to initialize...")
+        time.sleep(2)
+        
         # Run the application
         run_application(app_command)
     finally:
