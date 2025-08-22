@@ -34,7 +34,19 @@ def run_application(app_command):
     """Run the SDL2 application in the X server environment."""
     try:
         print(f"Running application: {app_command}")
-        subprocess.run(app_command, check=True, env={"DISPLAY": ":1", "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"]})
+        
+        # Configure environment for xinit (no window manager)
+        app_env = {
+            "DISPLAY": ":1", 
+            "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"],
+            # SDL2 configuration for xinit environment
+            "SDL_VIDEODRIVER": "x11",
+            "SDL_VIDEO_X11_WMCLASS": "ToasterOS",
+            "SDL_VIDEO_WINDOW_POS": "0,0"
+        }
+        
+        print("Configured SDL2 environment for xinit")
+        subprocess.run(app_command, check=True, env=app_env)
     except subprocess.CalledProcessError as e:
         print(f"Application exited with error: {e}")
 
