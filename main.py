@@ -102,15 +102,18 @@ if __name__ == "__main__":
         """Worker thread that runs animations"""
         global boot_completed, animation_paused, animation_restart
         if not boot_completed:        
-            animation_manager.run_animation("load")
-            animation_manager.run_animation("bootUp")
+            animation_manager.run_animation("load", loop=False)
+            animation_manager.run_animation("bootUp", loop=False)
             boot_completed = True
             print("Boot sequence completed! Menu is now available.")
         
         # After initial animations, run the blink animation in a loop
         print("Starting blink animation loop")
-        while True:
-            animation_manager.run_animation("blink")
+        while animation_manager.running:
+            if not animation_paused:
+                animation_manager.run_animation("blink", loop=True)
+            else:
+                time.sleep(0.1)  # Wait while paused
     
     # Start animation thread
     animation_thread = threading.Thread(target=animation_worker, daemon=True)

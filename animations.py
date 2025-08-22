@@ -265,12 +265,6 @@ class AnimationManager:
             else:
                 print(f"Unsupported sequence item: {current_item}. Skipping.")
 
-            # Handle events
-            events = sdl2.ext.get_events()
-            for event in events:
-                if event.type == sdl2.SDL_QUIT:
-                    self.running = False
-
             # Update the current sequence index based on the interval
             now = time.time()
             if isinstance(current_item, str) and now - last_update_time >= animation_data["interval"]:
