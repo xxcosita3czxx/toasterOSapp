@@ -20,8 +20,9 @@ def start_x_server():
         setup_xdg_runtime_dir()
 
         print("Starting X server...")
+        # Start X server without xterm and hide cursor
         x_server_process = subprocess.Popen(
-            ["xinit", "--", ":1"],
+            ["xinit", "/bin/true", "--", ":1", "-nocursor"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
