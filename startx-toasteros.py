@@ -47,9 +47,17 @@ def run_application(app_command):
         }
         
         print("Configured SDL2 environment for xinit")
-        subprocess.run(app_command, check=True, env=app_env)
-    except subprocess.CalledProcessError as e:
-        print(f"Application exited with error: {e}")
+        result = subprocess.run(app_command, check=False, env=app_env, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            print(f"Application failed with exit code {result.returncode}")
+            print("STDOUT:", result.stdout)
+            print("STDERR:", result.stderr)
+        else:
+            print("Application completed successfully")
+            
+    except Exception as e:
+        print(f"Error running application: {e}")
 
 def stop_x_server(x_server_process):
     """Stop the X server and display its output."""
