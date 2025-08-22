@@ -1,15 +1,56 @@
 import sdl2.ext
 import threading
 import time
+import os
 from animations import AnimationManager
 from app_menu import AppMenu
 
 if __name__ == "__main__":
-    sdl2.ext.init()
+    print("Starting ToasterOS...")
+    print("Initializing SDL2...")
+    
+    # Initialize SDL2 with explicit video driver for X11 (Alpine Linux compatibility)
+    if 'DISPLAY' in os.environ:
+        print(f"X11 Display detected: {os.environ['DISPLAY']}")
+        # Force X11 video driver for better Alpine compatibility
+        os.environ['SDL_VIDEODRIVER'] = 'x11'
+    else:
+        print("Warning: No DISPLAY environment variable found")
+    
+    # Initialize SDL2
+    init_result = sdl2.ext.init()
+    print("SDL2 initialized successfully")
+    
+    # Try to get display info, but handle failures gracefully for Alpine Linux
     display_mode = sdl2.SDL_DisplayMode()
-    sdl2.SDL_GetCurrentDisplayMode(0, display_mode)
-    window = sdl2.ext.Window("System", size=(display_mode.w, display_mode.h), flags=sdl2.SDL_WINDOW_FULLSCREEN)
+    result = sdl2.SDL_GetCurrentDisplayMode(0, display_mode)
+    
+    if result != 0:
+        # Fallback to common resolutions if display detection fails
+        print(f"Warning: Could not detect display mode (SDL error: {sdl2.SDL_GetError().decode()})")
+        print("Using fallback resolution of 1024x768")
+        window_width, window_height = 1024, 768
+        # Create window without fullscreen for better compatibility
+        window = sdl2.ext.Window("ToasterOS", size=(window_width, window_height))
+    else:
+        window_width, window_height = display_mode.w, display_mode.h
+        print(f"Detected display: {window_width}x{window_height}")
+        
+        # Try fullscreen, but fall back to windowed if it fails
+        try:
+            window = sdl2.ext.Window("ToasterOS", size=(window_width, window_height), flags=sdl2.SDL_WINDOW_FULLSCREEN)
+            print("Created fullscreen window")
+        except Exception as e:
+            print(f"Fullscreen failed: {e}")
+            print("Falling back to windowed mode")
+            window = sdl2.ext.Window("ToasterOS", size=(window_width, window_height))
+    
+    print("Showing window...")
     window.show()
+    print(f"Window created and shown: {window_width}x{window_height}")
+    
+    # Small delay to let the window initialize and ensure it's visible
+    time.sleep(0.2)
 
     animation_manager = AnimationManager("Anims", window, interval=0.1)
     animation_manager.load_animations()
