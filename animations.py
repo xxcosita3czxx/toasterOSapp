@@ -160,9 +160,8 @@ class AnimationManager:
                 if isinstance(current_item, str) and current_item.endswith((".png", ".jpg", ".jpeg")):
                     self.renderer.clear(sdl2.ext.Color(0, 0, 0))
                     sprite = sprite_cache[current_item]
-                    # Use full window for consistent rendering across platforms
-                    window_width, window_height = self.window.size
-                    dstrect = sdl2.SDL_Rect(0, 0, window_width, window_height)
+                    fill_mode = animation_data.get("fill", "full")
+                    dstrect = self.get_image_rect(sprite, fill_mode)
                     self.renderer.copy(sprite, dstrect=dstrect)
                     self.renderer.present()
                     time.sleep(animation_data["interval"])
