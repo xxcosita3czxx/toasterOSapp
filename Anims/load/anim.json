@@ -328,5 +328,6 @@
       "sleep": 1
     }
   ],
-  "fill": "vertical"
+  "fill": "vertical",
+  "interval": 0.03333333333333333
 }
