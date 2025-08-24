@@ -1,5 +1,5 @@
 import sdl2.ext
-from animations import AnimationManager
+from Libs.animations import AnimationManager
 
 if __name__ == "__main__":
     print("Starting simple ToasterOS...")
