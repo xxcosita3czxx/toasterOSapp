@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import traceback
 
 def setup_xdg_runtime_dir():
     """Ensure XDG_RUNTIME_DIR is set up with correct permissions."""
@@ -34,9 +35,26 @@ def run_application(app_command):
     """Run the SDL2 application in the X server environment."""
     try:
         print(f"Running application: {app_command}")
-        subprocess.run(app_command, check=True, env={"DISPLAY": ":1", "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"], "SDL_VIDEODRIVER": "fbcon"})
-    except subprocess.CalledProcessError as e:
+        proc = subprocess.Popen(
+            app_command,
+            env={
+                "DISPLAY": ":1",
+                "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"],
+                "SDL_VIDEODRIVER": "fbcon"
+            },
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        stdout, stderr = proc.communicate()
+        print("Application stdout:")
+        print(stdout.decode())
+        print("Application stderr:")
+        print(stderr.decode())
+        if proc.returncode != 0:
+            print(f"Application exited with error code: {proc.returncode}")
+    except Exception as e:
         print(f"Application exited with error: {e}")
+        traceback.print_exc()
 
 def stop_x_server(x_server_process):
     """Stop the X server and display its output."""
