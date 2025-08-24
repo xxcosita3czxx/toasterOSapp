@@ -40,6 +40,8 @@ start() {
         --make-pidfile \
         --pidfile /var/run/toasteros.pid \
         --exec "${command}" \
+        --stdout /var/log/toasteros.log \
+        --stderr /var/log/toasteros.log \
         --chdir "/root/toasterOSapp" \
         -- ${command_args}
     
