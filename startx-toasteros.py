@@ -40,7 +40,7 @@ def run_application(app_command):
             env={
                 "DISPLAY": ":1",
                 "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"],
-                "SDL_VIDEODRIVER": "fbcon"
+                "SDL_VIDEODRIVER": "x11"
             },
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
