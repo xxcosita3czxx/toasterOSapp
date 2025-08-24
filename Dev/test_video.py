@@ -7,7 +7,7 @@ import os
 import sdl2
 import sdl2.ext
 import time
-from animations import AnimationManager
+from Libs.animations import AnimationManager
 
 def test_video_playback():
     """Test video playback functionality"""

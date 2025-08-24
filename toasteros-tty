@@ -9,7 +9,7 @@ description="ToasterOS replaces the TTY1 login prompt after startup"
 
 # Command configuration
 command="/usr/bin/python3"
-command_args="startx-toasteros.py python main.py"
+command_args="main.py"
 
 respawn_delay=5
 
@@ -24,6 +24,7 @@ start_pre() {
     # Set up environment
     export DISPLAY=:1
     export XDG_RUNTIME_DIR="/tmp/runtime-toasteros"
+    export SDL_VIDEODRIVER=kmsdrm
     
     # Create runtime directory
     checkpath --directory --mode 0755 "${XDG_RUNTIME_DIR}"

@@ -5,7 +5,7 @@ Test the frame-based animation system (no more OpenCV needed!)
 
 import sdl2
 import sdl2.ext
-from animations import AnimationManager
+from Libs.animations import AnimationManager
 
 def test_frame_animation():
     """Test the frame-based load animation"""

@@ -8,7 +8,7 @@ import sdl2
 import sdl2.ext
 import time
 import os
-from animations import AnimationManager
+from Libs.animations import AnimationManager
 
 def main():
     print("=== Minimal ToasterOS Debug Version for XINIT ===")
