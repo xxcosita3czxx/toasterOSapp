@@ -9,7 +9,7 @@ description="ToasterOS replaces the TTY1 login prompt after startup"
 
 # Command configuration
 command="/usr/bin/python3"
-command_args="/root/toasterOSapp/startx-toasteros.py python /root/toasterOSapp/main.py"
+command_args="startx-toasteros.py python main.py"
 
 respawn_delay=5
 
@@ -27,13 +27,13 @@ start_pre() {
     
     # Create runtime directory
     checkpath --directory --mode 0755 "${XDG_RUNTIME_DIR}"
-
+    cd /root/toasterOSapp
     einfo "Starting ${name}..."
 }
 
 start() {
     ebegin "Starting ${name}"
-    
+    cd /root/toasterOSapp
     # Run in background so boot can continue
     start-stop-daemon --start \
         --background \
