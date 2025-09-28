@@ -1,5 +1,8 @@
 import sdl2.ext
+import sdl2
+import time
 from Libs.animations import AnimationManager
+from Libs.menu import draw_menu
 
 if __name__ == "__main__":
     print("Starting simple ToasterOS...")
@@ -15,8 +18,9 @@ if __name__ == "__main__":
     if result == 0:
         screen_width, screen_height = display_mode.w, display_mode.h
     else:
-        screen_width, screen_height = 1920, 1080  # fallback
-    
+        screen_width, screen_height = 720, 480  # fallback
+        print("Failed to get display mode, using fallback 720x480")
+    print(f"Display mode: {screen_width}x{screen_height}")
     # Create borderless window at full screen size
     window = sdl2.ext.Window(
         "ToasterOS", 
@@ -27,14 +31,44 @@ if __name__ == "__main__":
     window.show()
     print(f"Borderless fullscreen window created: {screen_width}x{screen_height}")
     
+    # Create renderer for the display window
+    renderer = sdl2.ext.Renderer(window)
     # Create animation manager
-    animation_manager = AnimationManager("Anims", window)
+    animation_manager = AnimationManager(renderer, "Anims", window)
     animation_manager.load_animations()
     print("Animations loaded")
-    
+
+    # State variables
+    menu_open = False
+    last_touch_time = time.time()
+    MENU_TIMEOUT = 30  # seconds
+
+    def close_menu():
+        global menu_open
+        menu_open = False
+        print("Menu closed")
+        # TODO: Replace with actual menu closing logic
+
     # Run animations
     print("Starting animations...")
     animation_manager.run_animation("load")
     animation_manager.run_animation("bootUp")
-    while True:
-        animation_manager.run_animation("blink")
+
+    running = True
+    while running:
+        events = sdl2.ext.get_events()
+        touched = False
+        for event in events:
+            if event.type == sdl2.SDL_QUIT:
+                running = False
+            elif event.type in (sdl2.SDL_FINGERDOWN, sdl2.SDL_MOUSEBUTTONDOWN):
+                touched = True
+                last_touch_time = time.time()
+                if not menu_open:
+                    draw_menu(renderer, screen_width, screen_height)
+        # If menu is open and timeout passed, close menu and resume animation
+        if menu_open:
+            if time.time() - last_touch_time > MENU_TIMEOUT:
+                close_menu()
+        if not menu_open:
+            animation_manager.run_animation("blink")

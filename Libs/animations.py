@@ -5,7 +5,7 @@ import time
 import json
 
 class AnimationManager:
-    def __init__(self, image_folder, window, interval=2):
+    def __init__(self, renderer, image_folder, window, interval=2):
         """Initialize the animation manager with a shared window.
 
         Args:
@@ -18,7 +18,7 @@ class AnimationManager:
         self.interval = interval
         self.animations = {}
         self.running = True
-        self.renderer = sdl2.ext.Renderer(self.window)
+        self.renderer = renderer
 
     def get_image_rect(self, sprite, fill_mode):
         """Calculate the destination rectangle for an image based on the fill mode.
