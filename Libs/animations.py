@@ -1,7 +1,6 @@
 import os
 import sdl2
 import sdl2.ext
-import time
 import json
 
 class AnimationManager:
@@ -164,11 +163,11 @@ class AnimationManager:
                     dstrect = self.get_image_rect(sprite, fill_mode)
                     self.renderer.copy(sprite, dstrect=dstrect)
                     self.renderer.present()
-                    time.sleep(animation_data["interval"])
+                    sdl2.SDL_Delay(int(animation_data["interval"] * 1000))
                 elif isinstance(current_item, dict) and "sleep" in current_item:
                     # Keep last frame visible during sleep
-                    time.sleep(current_item["sleep"])
-            
+                    sdl2.SDL_Delay(int(current_item["sleep"] * 1000))
+
             # If not looping, break after one complete sequence
             if not loop:
                 break

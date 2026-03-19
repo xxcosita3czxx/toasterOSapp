@@ -4,9 +4,14 @@ import time
 from Libs.animations import AnimationManager
 from Libs.menu import draw_menu
 
-if __name__ == "__main__":
-    print("Starting simple ToasterOS...")
-        
+MENU_TIMEOUT = 30  # seconds
+
+menu_open = False
+last_touch_time = time.time()
+running = True
+
+
+if __name__ == "__main__":        
     # Initialize SDL2
     sdl2.ext.init()
     print("SDL2 initialized")
@@ -38,37 +43,18 @@ if __name__ == "__main__":
     animation_manager.load_animations()
     print("Animations loaded")
 
-    # State variables
-    menu_open = False
-    last_touch_time = time.time()
-    MENU_TIMEOUT = 30  # seconds
-
-    def close_menu():
-        global menu_open
-        menu_open = False
-        print("Menu closed")
-        # TODO: Replace with actual menu closing logic
-
     # Run animations
     print("Starting animations...")
     animation_manager.run_animation("load")
     animation_manager.run_animation("bootUp")
 
-    running = True
     while running:
         events = sdl2.ext.get_events()
         touched = False
         for event in events:
             if event.type == sdl2.SDL_QUIT:
                 running = False
-            elif event.type in (sdl2.SDL_FINGERDOWN, sdl2.SDL_MOUSEBUTTONDOWN):
-                touched = True
-                last_touch_time = time.time()
-                if not menu_open:
-                    draw_menu(renderer, screen_width, screen_height)
-        # If menu is open and timeout passed, close menu and resume animation
-        if menu_open:
-            if time.time() - last_touch_time > MENU_TIMEOUT:
-                close_menu()
-        if not menu_open:
+            elif event.type == sdl2.SDL_KEYDOWN:
+                if event.key.keysym.sym == sdl2.SDLK_ESCAPE:
+                    running = False
             animation_manager.run_animation("blink")
